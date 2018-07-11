@@ -65,9 +65,27 @@
                            }})))
 
 (defn generate-file
+  ([infile outfile]
+   (generate-file asif/arrival-or-departure infile outfile))
+  ([predicate infile outfile]
+   (->> infile
+        (tcr/->aircraft predicate)
+        ->asif
+        ->xml
+        (spit outfile))))
+
+(defn generate-departures-file
   [infile outfile]
-  (->> infile
-       tcr/->aircraft
-       ->asif
-       ->xml
-       (spit outfile)))
+  (generate-file asif/departure? infile outfile))
+
+(defn generate-arrivals-file
+  [infile outfile]
+  (generate-file asif/arrival? infile outfile))
+
+(def full-file "./data/aedt/FA_Sightings.180401.airport_ids.json")
+
+;; (generate-file asif/arrival? full-file "arrivals.xml")
+
+;; (generate-file asif/departure? full-file "departures.xml")
+
+;; (generate-file asif/arrival-or-departure full-file "both.xml")

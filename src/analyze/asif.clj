@@ -1,5 +1,6 @@
 (ns analyze.asif
   (:require
+   [analyze.airports :as airports]
    [clojure.string :as string]
    [clojure.data.xml :as data.xml]
    [slingshot.slingshot :refer [throw+ try+]]
@@ -7,6 +8,35 @@
    ))
 
 ;; https://github.com/clojure/data.xml
+
+(defn known?
+  [s]
+  (not= s "unknown"))
+
+(def unknown? (complement known?))
+
+(defn arrival-or-departure
+  "TODO: Make sure origin/destination are in the SF Bay Area!!!"
+  [{:keys [origin destination]}]
+  (if (and (known? destination)
+           (unknown? origin))
+    :arrival
+    (if (and (known? origin)
+             (unknown? destination))
+      :departure
+      false)))
+
+(defn arrival?
+  [m]
+  (if (= :arrival (arrival-or-departure m))
+    true
+    false))
+
+(defn departure?
+  [m]
+  (if (= :departure (arrival-or-departure m))
+    true
+    false))
 
 (defn airport-layout
   [airport]
@@ -55,32 +85,79 @@
      [:name name]
      [:weight weight]]]])
 
-(defn operation
-  "TODO: Only handles arrivals currently, needs major work!"
-  [{:keys [id aircraft-id number arrival-airport arrival-runway on-time]}]
+(defmulti operation
+  (fn [{:keys [op-type]}]
+    op-type))
+
+(defmethod operation :arrival
+  [{:keys [id aircraft-id number op-type airport runway op-time]}]
   [:operation
    [:id id]
    [:aircraftType
     [:anpAircraftId aircraft-id]]
    [:numOperations number]
-   [:arrivalAirport {:type "ICAO"} arrival-airport]
-   [:arrivalRunway arrival-runway]
-   [:onTime on-time]])
+   [:arrivalAirport {:type "ICAO"} airport]
+   [:arrivalRunway (if runway
+                     runway
+                     (->> airport
+                          (get airports/sfba-by-airport)
+                          :runways
+                          :arrival
+                          first))]
+   [:onTime op-time]])
+
+(defmethod operation :departure
+  [{:keys [id aircraft-id number op-type airport runway op-time]}]
+  [:operation
+   [:id id]
+   [:aircraftType
+    [:anpAircraftId aircraft-id]]
+   [:numOperations number]
+   [:departureAirport {:type "ICAO"} airport]
+   [:departureRunway (if runway
+                       runway
+                       (->> airport
+                            (get airports/sfba-by-airport)
+                            :runways
+                            :departure
+                            first))]
+   [:offTime op-time]])
 
 (defn operations-gen
   [operations]
   (into [:operations]
         (mapv operation operations)))
 
-(defn format-operation
-  [{:keys [icao tail origin destination flight ts-start ts-end]}]
+(defmulti format-operation
+  arrival-or-departure)
+
+(defmethod format-operation :arrival
+  [{:keys [icao tail ac-type ac-id origin destination flight ts-start ts-end] :as op-map}]
   [:operations
    (operation {:id flight
-               :aircraft-id "737800"
+               :aircraft-id (if ac-id
+                              ac-id
+                              (->> destination
+                                   (get airports/sfba-by-airport)
+                                   :default-aircraft))
+               :op-type :arrival
                :number 1.0
-               :arrival-airport destination
-               :arrival-runway "28L"
-               :on-time ts-end})])
+               :airport destination
+               :op-time ts-end})])
+
+(defmethod format-operation :departure
+  [{:keys [icao tail ac-type ac-id origin destination flight ts-start ts-end] :as op-map}]
+  [:operations
+   (operation {:id flight
+               :aircraft-id (if ac-id
+                              ac-id
+                              (->> origin
+                                   (get airports/sfba-by-airport)
+                                   :default-aircraft))
+               :op-type :departure
+               :number 1.0
+               :airport origin
+               :op-time ts-start})])
 
 (defn track-node
   [{:keys [lat lon] :as node}]
@@ -105,12 +182,33 @@
          [:runway runway]]
         (mapv subtrack subtracks)))
 
-(defn format-track
+(defmulti format-track
+  arrival-or-departure)
+
+(defmethod format-track :arrival
   [{:keys [icao tail origin destination flight ts-start ts-end positions]}]
   (track-gen {:name flight
               :op-type "A"
               :airport destination
-              :runway "28L"
+              :runway (->> destination
+                           (get airports/sfba-by-airport)
+                           :runways
+                           :arrival
+                           first)
+              :subtracks [{:id 0
+                           :dispersion-weight 1.0
+                           :nodes positions}]}))
+
+(defmethod format-track :departure
+  [{:keys [icao tail origin destination flight ts-start ts-end positions]}]
+  (track-gen {:name flight
+              :op-type "D"
+              :airport origin
+              :runway (->> origin
+                           (get airports/sfba-by-airport)
+                           :runways
+                           :departure
+                           first)
               :subtracks [{:id 0
                            :dispersion-weight 1.0
                            :nodes positions}]}))

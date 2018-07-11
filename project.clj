@@ -19,6 +19,9 @@
   :codox {:output-path "resources/doc/api"}
 
   :aliases {
-            "generate-asif"     ["run" "-m" "analyze.job/generate-file"]
+            "generate-asif"              ["run" "-m" "analyze.job/generate-file"]
+            "generate-asif-both"         ["run" "-m" "analyze.job/generate-file"]
+            "generate-asif-departures"   ["run" "-m" "analyze.job/generate-departures-file"]
+            "generate-asif-arrivals"     ["run" "-m" "analyze.job/generate-arrivals-file"]
             }
   )
