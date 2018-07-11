@@ -9,7 +9,7 @@
     :altitude 4
     :default-aircraft "737800"
     :runways {:arrival ["28L"]
-              :departure ["1R"]}
+              :departure ["01R"]}
     :classes [:b]}
    {:code :KOAK
     :name "Oakland International Airport"

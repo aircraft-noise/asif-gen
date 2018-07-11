@@ -74,6 +74,21 @@
         ->xml
         (spit outfile))))
 
+(defn generate-file-single
+  ([infile outfile]
+   (generate-file asif/arrival-or-departure infile outfile))
+  ([predicate infile outfile]
+   (->> infile
+        (tcr/->aircraft predicate)
+        ->asif
+        ->xml
+        (spit outfile))))
+
+
+(defn KSFO?
+  [{:keys [origin]}]
+  (= origin "KSFO"))
+
 (defn generate-departures-file
   [infile outfile]
   (generate-file asif/departure? infile outfile))
