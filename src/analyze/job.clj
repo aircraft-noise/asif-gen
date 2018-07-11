@@ -22,7 +22,7 @@
                 :study-type "Noise and Dispersion"
                 :emission-units "Kilograms"
                 :description "One Sensor Path Operation Near SFO"
-                :airports ["KSFO"]
+                :airports (tcr/get-airports ms)
                 :receptor-sets [{:name "MONA sensors"
                                  :contents [{:type :point-receptor
                                              :name "DCJ"
@@ -52,7 +52,7 @@
 		           :alt-cutoff 42000
 		           :sulfur-conv-rate 0.05
                            :fuel-sulfur-content 6.8E-4
-                           :airports ["KSFO"]
+                           :airports (tcr/get-airports ms)
                            :annualization {:name "Auto Ops"
                                            :weight 1.0}
                            :cases [{:id 1
@@ -65,9 +65,42 @@
                            }})))
 
 (defn generate-file
+  ([infile outfile]
+   (generate-file asif/arrival-or-departure infile outfile))
+  ([predicate infile outfile]
+   (->> infile
+        (tcr/->aircraft predicate)
+        ->asif
+        ->xml
+        (spit outfile))))
+
+(defn generate-file-single
+  ([infile outfile]
+   (generate-file asif/arrival-or-departure infile outfile))
+  ([predicate infile outfile]
+   (->> infile
+        (tcr/->aircraft predicate)
+        ->asif
+        ->xml
+        (spit outfile))))
+
+
+(defn KSFO?
+  [{:keys [origin]}]
+  (= origin "KSFO"))
+
+(defn generate-departures-file
   [infile outfile]
-  (->> infile
-       tcr/->aircraft
-       ->asif
-       ->xml
-       (spit outfile)))
+  (generate-file asif/departure? infile outfile))
+
+(defn generate-arrivals-file
+  [infile outfile]
+  (generate-file asif/arrival? infile outfile))
+
+(def full-file "./data/aedt/FA_Sightings.180401.airport_ids.json")
+
+;; (generate-file asif/arrival? full-file "arrivals.xml")
+
+;; (generate-file asif/departure? full-file "departures.xml")
+
+;; (generate-file asif/arrival-or-departure full-file "both.xml")
