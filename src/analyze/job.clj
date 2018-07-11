@@ -22,7 +22,7 @@
                 :study-type "Noise and Dispersion"
                 :emission-units "Kilograms"
                 :description "One Sensor Path Operation Near SFO"
-                :airports ["KSFO"]
+                :airports (tcr/get-airports ms)
                 :receptor-sets [{:name "MONA sensors"
                                  :contents [{:type :point-receptor
                                              :name "DCJ"
@@ -52,7 +52,7 @@
 		           :alt-cutoff 42000
 		           :sulfur-conv-rate 0.05
                            :fuel-sulfur-content 6.8E-4
-                           :airports ["KSFO"]
+                           :airports (tcr/get-airports ms)
                            :annualization {:name "Auto Ops"
                                            :weight 1.0}
                            :cases [{:id 1
