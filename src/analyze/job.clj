@@ -2,6 +2,8 @@
   (:require
    [analyze.tcr :as tcr]
    [analyze.asif :as asif]
+   [analyze.airports :as airports]
+   [analyze.waypoints :as waypoints]
    [clojure.string :as string]
    [clojure.data.xml :as data.xml]
    [slingshot.slingshot :refer [throw+ try+]]
@@ -64,6 +66,11 @@
                                     :track-op-sets (mapv asif/format-track-op-set ms)}]
                            }})))
 
+(defn KSFO?
+  [{:keys [origin departure]}]
+  (or (= origin "KSFO")
+      (= departure "KSFO")))
+
 (defn generate-file
   ([infile outfile]
    (generate-file asif/arrival-or-departure infile outfile))
@@ -74,20 +81,23 @@
         ->xml
         (spit outfile))))
 
-(defn generate-file-single
+(defn one-sfo-flight
+  "Example filterfn for generate-file-filtered"
+  [v]
+  (->> v
+       (filter KSFO?)
+       (take 1)))
+
+(defn generate-file-filtered
   ([infile outfile]
-   (generate-file asif/arrival-or-departure infile outfile))
-  ([predicate infile outfile]
+   (generate-file-filtered #'identity asif/arrival-or-departure infile outfile))
+  ([filterfn predicate infile outfile]
    (->> infile
         (tcr/->aircraft predicate)
+        filterfn
         ->asif
         ->xml
         (spit outfile))))
-
-
-(defn KSFO?
-  [{:keys [origin]}]
-  (= origin "KSFO"))
 
 (defn generate-departures-file
   [infile outfile]

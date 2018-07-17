@@ -1,6 +1,7 @@
 (ns analyze.asif
   (:require
    [analyze.airports :as airports]
+   [analyze.waypoints :as waypoints]
    [clojure.string :as string]
    [clojure.data.xml :as data.xml]
    [slingshot.slingshot :refer [throw+ try+]]
