@@ -49,7 +49,9 @@
 
 (defmulti receptor
   (fn [{:keys [type]}]
-    type))
+    (if (keyword? type)
+      type
+      (keyword type))))
 
 (defmethod receptor :point-receptor
   [{:keys [name lat lon elevation]}]
@@ -220,11 +222,15 @@
   (track-gen track)
   (operations-gen operations))
 
-(defn format-track-op-set
+(defn format-track-op-set-track-nodes
   [m]
   [:trackOpSet
    (format-track m)
    (format-operation m)])
+
+(defn generate-tos-track-nodes
+  [ms]
+  (mapv format-track-op-set-track-nodes ms))
 
 (defn case-gen
   [{:keys [id name description source start-time stop-time duration track-op-sets]}]
