@@ -11,8 +11,11 @@
    [clojure.string :as string]
    [clojure.walk :as walk]
    [clojure.data.xml :as data.xml]
-   [slingshot.slingshot :refer [throw+ try+]]
-   ))
+   [clojure.tools.cli :as cli]
+   [slingshot.slingshot :refer [throw+ try+]])
+  (:gen-class
+   :main true))
+;;   :name asif.gen))
 
 ;; https://github.com/clojure/data.xml
 
@@ -67,6 +70,28 @@
   (or (= origin "KSFO")
       (= departure "KSFO")))
 
+(defn KOAK?
+  [{:keys [origin departure]}]
+  (or (= origin "KOAK")
+      (= departure "KOAK")))
+
+(defn KSJC?
+  [{:keys [origin departure]}]
+  (or (= origin "KSJC")
+      (= departure "KSJC")))
+
+(defn only-one
+  [v]
+  (take 1 v))
+
+(def filter->fn
+  {:KSFO #'KSFO?
+   :KOAK #'KOAK?
+   :KSJC #'KSJC?
+   :both #'asif/arrival-or-departure
+   :arrivals #'asif/arrival?
+   :departures #'asif/departure?})
+
 (defn read-flights-file
   ([infile]
    (read-flights-file asif/arrival-or-departure infile))
@@ -80,8 +105,11 @@
        (filter KSFO?)
        (take 1)))
 
-(def full-file
-  "./data/flights/FA_Sightings.180401.airport_ids.json")
+(def flights-file
+  "./data/flights/FA_Sightings.180401.airport_ids.50.json")
+
+(def study-file
+  "data/examples/tracknode-study.edn")
 
 (defn read-structured-file
   [filename]
@@ -91,9 +119,61 @@
     ".json" (json/file->edn filename)))
 
 (defn process-study
-  [study-file flights-file out-file]
-  (->> study-file
-       read-structured-file
-       (->study (read-flights-file flights-file))
-       ->xml
-       (spit out-file)))
+  ([study-file flights-file out-file]
+   (process-study asif/arrival-or-departure study-file flights-file out-file))
+  ([filter-fn study-file flights-file out-file]
+   (->> study-file
+        read-structured-file
+        (->study (read-flights-file filter-fn flights-file))
+        ->xml
+        (spit out-file))))
+
+(defn reformat-airport
+  [{:keys [runways runways-reverse default-aircraft] :as airport}]
+  (assoc (merge airport runways)
+         :acft default-aircraft
+         :arr-rev (:arrival runways-reverse)
+         :dprt-rev (:departure runways-reverse)))
+
+(defn airport-table
+  []
+  (->> airports/sfba
+       (mapv reformat-airport)
+       (clojure.pprint/print-table [:code :acft :arrival :departure :arr-rev :dprt-rev :name])))
+
+(def cli-options
+  [[nil "--study file" "Study filename, supported formats/extensions: yaml, json, and edn"]
+   [nil "--flights file" "Flights filename (TCR-JSON)"]
+   [nil "--filter name" "Name of filter to invoke on flights, this option can provided multiple times..."
+    :default []
+    :parse-fn #(keyword %)
+    :assoc-fn (fn [m k v] (update-in m [k] conj v))]
+   [nil "--output file" "Filename for generated ASIF"]
+   ["-h" "--help"]])
+
+(defn usage
+  [options-summary]
+  (->> ["Generates AEDT ASIF XML from the provided study template and flights data."
+        ""
+        "Usage: asif-gen [options]"
+        ""
+        "Options:"
+        options-summary
+        ""
+        "Please refer to the README for more information:"
+        "  https://github.com/aircraft-noise/asif-gen/blob/develop/README.md"]
+       (string/join \newline)
+       println))
+
+(defn -main
+  [& args]
+  (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)
+        {:keys [study flights filter out help]} options]
+    (cond
+      help (do
+             (usage summary)
+             (System/exit 0))
+      options (do
+                (let [filter-names (if (empty? filter) [:both] filter)
+                      filter-fns (apply comp (reverse (map filter->fn filter-names)))]
+                  (process-study filter-fns study flights out))))))

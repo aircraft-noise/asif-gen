@@ -1,7 +1,3 @@
-;; (require 'cemerick.pomegranate.aether)
-;; (cemerick.pomegranate.aether/register-wagon-factory!
-;;  "http" #(org.apache.maven.wagon.providers.http.HttpWagon.))
-
 (defproject org.aircraft-noise/asif-gen
 
   "0.1.0-SNAPSHOT"
@@ -19,9 +15,14 @@
 
   :plugins [[lein-codox "0.10.1"]]
 
+  :main analyze.job
+
+  :bin {:name "asif-gen"
+        :bin-path "./bin"}
+
   :codox {:output-path "resources/doc/api"}
 
   :aliases {
-            "generate-asif"   ["run" "-m" "analyze.job/process-study"]
+            "asif-gen"   ["run" "-m" "analyze.job/process-study"]
             }
   )
