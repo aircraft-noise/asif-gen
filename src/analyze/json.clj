@@ -41,8 +41,8 @@
 (defn ->json
   "Returns JSON string, prettyprinted by default, set optional 2nd arg to false to forego prettyprinting"
   ([edn]
-   (->json edn true))
-  ([edn pretty?]
+   (->json true edn))
+  ([pretty? edn]
    (cheshire/generate-string edn {:pretty pretty?})))
 
 (defn ->file

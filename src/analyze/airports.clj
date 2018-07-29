@@ -17,8 +17,8 @@
     :lon -122.220833
     :altitude 3
     :default-aircraft "737800"
-    :runways {:arrival ["30"]
-              :departure ["30"]}
+    :runways {:arrival ["29"]
+              :departure ["29"]}
     :classes [:c]}
    {:code :KSJC
     :name "Norman Y. Mineta San José International Airport"

@@ -4,12 +4,53 @@
    [analyze.asif :as asif]
    [analyze.airports :as airports]
    [analyze.waypoints :as waypoints]
+   [analyze.yaml :as yaml]
+   [analyze.json :as json]
+   [analyze.edn]
+   [me.raynes.fs :as fs]
    [clojure.string :as string]
+   [clojure.walk :as walk]
    [clojure.data.xml :as data.xml]
-   [slingshot.slingshot :refer [throw+ try+]]
-   ))
+   [clojure.tools.cli :as cli]
+   [slingshot.slingshot :refer [throw+ try+]])
+  (:gen-class
+   :main true))
+;;   :name asif.gen))
 
 ;; https://github.com/clojure/data.xml
+
+;; https://github.com/clojure/tools.cli
+
+(def dkw->dsfn
+  {:!get-airports! #'tcr/get-airports
+   :!generate-tos-track-nodes! #'asif/generate-tos-track-nodes})
+
+(defn ^:private add-string-keys
+  [m]
+  (into m (zipmap (map clojure.core/name (keys m))
+                  (vals m))))
+
+(let [with-strings (add-string-keys dkw->dsfn)
+      dkws (-> with-strings
+               keys
+               set)]
+
+  (defn ^:private dkw?
+    [k]
+    (contains? dkws k))
+
+  (defn ^:private eval-dsfn
+    [data dkw]
+    ((get with-strings dkw) data))
+
+)
+
+(defn ^:private replace-dkws
+  "Recursively transforms all map DSL values into functions"
+  [data m]
+  (let [f (fn [[k v]] (if (dkw? v) [k (eval-dsfn data v)] [k v]))]
+    ;; only apply to maps
+    (walk/postwalk (fn [x] (if (map? x) (into {} (map f x)) x)) m)))
 
 (defn ->xml
   [f]
@@ -17,69 +58,45 @@
       data.xml/sexp-as-element
       data.xml/indent-str))
 
-(defn ->asif
-  [ms]
-  (asif/header
-   (asif/study {:name "SFO Single Plane Test"
-                :study-type "Noise and Dispersion"
-                :emission-units "Kilograms"
-                :description "One Sensor Path Operation Near SFO"
-                :airports (tcr/get-airports ms)
-                :receptor-sets [{:name "MONA sensors"
-                                 :contents [{:type :point-receptor
-                                             :name "DCJ"
-                                             :lat 37.444713
-                                             :lon -122.155651
-                                             :elevation 49}
-                                            {:type :point-receptor
-                                             :name "TCR"
-                                             :lat 37.450204
-                                             :lon -122.143786
-                                             :elevation 26}]}
-                                {:name "Bay Grid Sensors"
-                                 :contents [{:type :grid
-                                             :lat 37.296680
-                                             :lon -122.787444
-                                             :width 50.0
-                                             :height 50.0
-                                             :num-width 100
-                                             :num-height 100}]}]
-                :scenario {:name "aa56b6 Overflight"
-		           :description "Asif Import Test, Single Flight"
-		           :start-time "2018-04-01T00:00:00"
-		           :duration 24
-		           :taxi-model "UserSpecified"
-		           :ac-perf-model "SAE1845"
-		           :bank-angle true
-		           :alt-cutoff 42000
-		           :sulfur-conv-rate 0.05
-                           :fuel-sulfur-content 6.8E-4
-                           :airports (tcr/get-airports ms)
-                           :annualization {:name "Auto Ops"
-                                           :weight 1.0}
-                           :cases [{:id 1
-                                    :name "Auto Ops"
-                                    :description "Sample"
-                                    :source "Aircraft"
-                                    :start-time "2018-04-01T00:00:00"
-                                    :duration 24
-                                    :track-op-sets (mapv asif/format-track-op-set ms)}]
-                           }})))
+(defn ->study
+  [data dsl]
+  (->> dsl
+       (replace-dkws data)
+       asif/study
+       asif/header))
 
 (defn KSFO?
   [{:keys [origin departure]}]
   (or (= origin "KSFO")
       (= departure "KSFO")))
 
-(defn generate-file
-  ([infile outfile]
-   (generate-file asif/arrival-or-departure infile outfile))
-  ([predicate infile outfile]
-   (->> infile
-        (tcr/->aircraft predicate)
-        ->asif
-        ->xml
-        (spit outfile))))
+(defn KOAK?
+  [{:keys [origin departure]}]
+  (or (= origin "KOAK")
+      (= departure "KOAK")))
+
+(defn KSJC?
+  [{:keys [origin departure]}]
+  (or (= origin "KSJC")
+      (= departure "KSJC")))
+
+(defn only-one
+  [v]
+  (take 1 v))
+
+(def filter->fn
+  {:KSFO #'KSFO?
+   :KOAK #'KOAK?
+   :KSJC #'KSJC?
+   :both #'asif/arrival-or-departure
+   :arrivals #'asif/arrival?
+   :departures #'asif/departure?})
+
+(defn read-flights-file
+  ([infile]
+   (read-flights-file asif/arrival-or-departure infile))
+  ([predicate infile]
+   (tcr/->aircraft predicate infile)))
 
 (defn one-sfo-flight
   "Example filterfn for generate-file-filtered"
@@ -88,29 +105,75 @@
        (filter KSFO?)
        (take 1)))
 
-(defn generate-file-filtered
-  ([infile outfile]
-   (generate-file-filtered #'identity asif/arrival-or-departure infile outfile))
-  ([filterfn predicate infile outfile]
-   (->> infile
-        (tcr/->aircraft predicate)
-        filterfn
-        ->asif
+(def flights-file
+  "./data/flights/FA_Sightings.180401.airport_ids.50.json")
+
+(def study-file
+  "data/examples/tracknode-study.edn")
+
+(defn read-structured-file
+  [filename]
+  (case (fs/extension filename)
+    ".edn"  (analyze.edn/file-> filename)
+    ".yaml" (yaml/file->edn filename)
+    ".json" (json/file->edn filename)))
+
+(defn process-study
+  ([study-file flights-file out-file]
+   (process-study asif/arrival-or-departure study-file flights-file out-file))
+  ([filter-fn study-file flights-file out-file]
+   (->> study-file
+        read-structured-file
+        (->study (read-flights-file filter-fn flights-file))
         ->xml
-        (spit outfile))))
+        (spit out-file))))
 
-(defn generate-departures-file
-  [infile outfile]
-  (generate-file asif/departure? infile outfile))
+(defn reformat-airport
+  [{:keys [runways runways-reverse default-aircraft] :as airport}]
+  (assoc (merge airport runways)
+         :acft default-aircraft
+         :arr-rev (:arrival runways-reverse)
+         :dprt-rev (:departure runways-reverse)))
 
-(defn generate-arrivals-file
-  [infile outfile]
-  (generate-file asif/arrival? infile outfile))
+(defn airport-table
+  []
+  (->> airports/sfba
+       (mapv reformat-airport)
+       (clojure.pprint/print-table [:code :acft :arrival :departure :arr-rev :dprt-rev :name])))
 
-(def full-file "./data/aedt/FA_Sightings.180401.airport_ids.json")
+(def cli-options
+  [[nil "--study file" "Study filename, supported formats/extensions: yaml, json, and edn"]
+   [nil "--flights file" "Flights filename (TCR-JSON)"]
+   [nil "--filter name" "Name of filter to invoke on flights, this option can provided multiple times..."
+    :default []
+    :parse-fn #(keyword %)
+    :assoc-fn (fn [m k v] (update-in m [k] conj v))]
+   [nil "--output file" "Filename for generated ASIF"]
+   ["-h" "--help"]])
 
-;; (generate-file asif/arrival? full-file "arrivals.xml")
+(defn usage
+  [options-summary]
+  (->> ["Generates AEDT ASIF XML from the provided study template and flights data."
+        ""
+        "Usage: asif-gen [options]"
+        ""
+        "Options:"
+        options-summary
+        ""
+        "Please refer to the README for more information:"
+        "  https://github.com/aircraft-noise/asif-gen/blob/develop/README.md"]
+       (string/join \newline)
+       println))
 
-;; (generate-file asif/departure? full-file "departures.xml")
-
-;; (generate-file asif/arrival-or-departure full-file "both.xml")
+(defn -main
+  [& args]
+  (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)
+        {:keys [study flights filter out help]} options]
+    (cond
+      help (do
+             (usage summary)
+             (System/exit 0))
+      options (do
+                (let [filter-names (if (empty? filter) [:both] filter)
+                      filter-fns (apply comp (reverse (map filter->fn filter-names)))]
+                  (process-study filter-fns study flights out))))))

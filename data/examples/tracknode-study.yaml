@@ -1,0 +1,50 @@
+name: SFO Single Plane Test
+study-type: Noise and Dispersion
+emission-units: Kilograms
+description: One Sensor Path Operation Near SFO
+airports: '!get-airports!'
+receptor-sets:
+- name: MONA sensors
+  contents:
+  - type: point-receptor
+    name: DCJ
+    lat: 37.444713
+    lon: -122.155651
+    elevation: 49
+  - type: point-receptor
+    name: TCR
+    lat: 37.450204
+    lon: -122.143786
+    elevation: 26
+- name: Bay Grid Sensors
+  contents:
+  - type: grid
+    lat: 37.29668
+    lon: -122.787444
+    width: 50.0
+    height: 50.0
+    num-width: 100
+    num-height: 100
+scenario:
+  description: Asif Import Test, Single Flight
+  taxi-model: UserSpecified
+  annualization:
+    name: Auto Ops
+    weight: 1.0
+  fuel-sulfur-content: 6.8E-4
+  name: aa56b6 Overflight
+  alt-cutoff: 42000
+  start-time: '2018-04-01T00:00:00'
+  duration: 24
+  sulfur-conv-rate: 0.05
+  ac-perf-model: SAE1845
+  airports: '!get-airports!'
+  cases:
+  - id: 1
+    name: Auto Ops
+    description: Sample
+    source: Aircraft
+    start-time: '2018-04-01T00:00:00'
+    duration: 24
+    track-op-sets: '!generate-tos-track-nodes!'
+  bank-angle: true
