@@ -37,6 +37,11 @@
              []
              m))
 
+(defn format-position
+  [{:keys [seen_pos] :as position}]
+  (assoc position
+         :time (pdt-epoch->asif-time seen_pos)))
+
 (defn format-aircraft
   [{:keys [metadata header positions]}]
   (let [{:keys [tail_# ac_type icao #_segments]} metadata
@@ -49,7 +54,7 @@
      :flight flight
      :ts-start (pdt-epoch->asif-time segment_start)
      :ts-end (pdt-epoch->asif-time segment_end)
-     :positions positions
+     :positions (mapv format-position positions)
      }))
 
 (defn file->aircraft

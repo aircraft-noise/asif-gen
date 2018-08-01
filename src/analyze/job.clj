@@ -106,7 +106,7 @@
        (take 1)))
 
 (def flights-file
-  "./data/flights/FA_Sightings.180401.airport_ids.50.json")
+  "./data/flights/flights-20180401.json")
 
 (def study-file
   "data/examples/tracknode-study.edn")
