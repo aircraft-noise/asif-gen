@@ -66,19 +66,19 @@
        asif/header))
 
 (defn KSFO?
-  [{:keys [origin departure]}]
+  [{:keys [origin destination]}]
   (or (= origin "KSFO")
-      (= departure "KSFO")))
+      (= destination "KSFO")))
 
 (defn KOAK?
-  [{:keys [origin departure]}]
+  [{:keys [origin destination]}]
   (or (= origin "KOAK")
-      (= departure "KOAK")))
+      (= destination "KOAK")))
 
 (defn KSJC?
-  [{:keys [origin departure]}]
+  [{:keys [origin destination]}]
   (or (= origin "KSJC")
-      (= departure "KSJC")))
+      (= destination "KSJC")))
 
 (defn only-one
   [v]
@@ -127,6 +127,14 @@
         (->study (read-flights-file filter-fn flights-file))
         ->xml
         (spit out-file))))
+
+(defn process-study-special
+  [study-file flights-data out-file]
+  (->> study-file
+       read-structured-file
+       (->study flights-data)
+       ->xml
+       (spit out-file)))
 
 (defn reformat-airport
   [{:keys [runways runways-reverse default-aircraft] :as airport}]
@@ -177,3 +185,17 @@
                 (let [filter-names (if (empty? filter) [:both] filter)
                       filter-fns (apply comp (reverse (map filter->fn filter-names)))]
                   (process-study filter-fns study flights out))))))
+
+(defn edn-test-data
+  []
+  (-> flights-file
+      read-flights-file
+      (analyze.edn/->file "flights.edn")))
+
+
+(defn tcr-edn
+  [filename]
+  (-> filename
+      (str ".json")
+      read-flights-file
+      (analyze.edn/->file (str filename ".edn"))))

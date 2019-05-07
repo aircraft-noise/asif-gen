@@ -24,5 +24,6 @@
 
   :aliases {
             "asif-gen"   ["run" "-m" "analyze.job/process-study"]
+            "tcr2edn"    ["run" "-m" "analyze.job/tcr-edn"]
             }
   )
