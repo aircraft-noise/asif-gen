@@ -176,7 +176,7 @@
 (defn -main
   [& args]
   (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)
-        {:keys [study flights filter out help]} options]
+        {:keys [study flights filter output help]} options]
     (cond
       help (do
              (usage summary)
@@ -184,7 +184,7 @@
       options (do
                 (let [filter-names (if (empty? filter) [:both] filter)
                       filter-fns (apply comp (reverse (map filter->fn filter-names)))]
-                  (process-study filter-fns study flights out))))))
+                  (process-study filter-fns study flights output))))))
 
 (defn edn-test-data
   []

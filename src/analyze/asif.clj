@@ -116,6 +116,8 @@
    [:aircraftType
     [:anpAircraftId aircraft-id]]
    [:numOperations number]
+   [:saeProfile "STANDARD"]
+   [:stageLength 1]
    [:departureAirport {:type "ICAO"} airport]
    [:departureRunway (if runway
                        runway
