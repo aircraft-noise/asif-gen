@@ -49,8 +49,9 @@ Currently these magic values include:
 
 * !generate-tos-track-nodes! - Generates track nodes for each position of each flight in the flights data file
 * !get-airports! - Generates a list of all airports referenced in the flights data file
+* !get-earliest-start! - Is replaced by the earliest start time found in the flights data file
 
-These are the first two functions that were needed for our initial AEDT testing, almost certainly many more such functions will be implemented as required.
+These are the initial functions that were needed for our initial AEDT testing, almost certainly many more such functions will be implemented as required.
 
 ## Filters
 
