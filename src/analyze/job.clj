@@ -23,7 +23,8 @@
 
 (def dkw->dsfn
   {:!get-airports! #'tcr/get-airports
-   :!generate-tos-track-nodes! #'asif/generate-tos-track-nodes})
+   :!generate-tos-track-nodes! #'asif/generate-tos-track-nodes
+   :!get-earliest-start! #'tcr/get-earliest-start})
 
 (defn ^:private add-string-keys
   [m]
@@ -105,8 +106,11 @@
        (filter KSFO?)
        (take 1)))
 
+;; (def flights-file
+;;   "./data/flights/flights-20180401.json")
+
 (def flights-file
-  "./data/flights/flights-20180401.json")
+  "./data/flights/flights-20190613.json")
 
 (def study-file
   "data/examples/tracknode-study.edn")

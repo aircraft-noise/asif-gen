@@ -12,6 +12,7 @@
    [clj-time.coerce :as time.coerce]))
 
 (defn pdt-epoch->time
+  "TODO: FIX: assumes 7 hour offset between Pacific time and UTC"
   [t]
   (time.coerce/from-long (* 1000 (- (long t) (* 7 60 60)))))
 
@@ -64,6 +65,15 @@
       :aircraft
       split-icaos))
 
+(def unsupported-airports
+  (set ["SUMED" "VMCED"]))
+
+(defn unsupported-airport?
+  "TODO: horrible hack"
+  [m]
+  (or (contains? unsupported-airports (:origin m))
+      (contains? unsupported-airports (:destination m))))
+
 (defn ->aircraft
   ([filename]
    (->aircraft identity filename))
@@ -71,6 +81,7 @@
    (->> filename
         file->aircraft
         (map format-aircraft)
+        (remove unsupported-airport?)
         (filterv predicate))))
 
 ;; (def acf (->aircraft "./data/aedt/FA_Noise_Examples.180401.json"))
@@ -79,6 +90,22 @@
   [ms]
   (let [all-airports (set (into (mapv :origin ms) (mapv :destination ms)))]
     (vec (set/difference all-airports #{"unknown"}))))
+
+(defn get-earliest-start
+  "TODO: use min/max instead of sort"
+  [ms]
+  (->> ms
+       (map :ts-start)
+       (sort compare)
+       first))
+
+(defn get-latest-end
+  "TODO: use min/max instead of sort"
+  [ms]
+  (->> ms
+       (map :ts-end)
+       (sort #(compare %2 %1))
+       first))
 
 (defn get-ac-types
   [ms]
@@ -125,3 +152,7 @@
    ["KSQL" "unknown"] 32,
    ["KSJC" "unknown"] 139,
    ["KPAO" "unknown"] 58,})
+
+;; airport code is 15CA, not SUMED
+;; Valley Medical Center in San Jose. if not mistaken
+;; 86CA  is the code for that

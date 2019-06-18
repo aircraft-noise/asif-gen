@@ -9,6 +9,10 @@ Two input files are required:
 
 Optionally, one or more filters over the aircraft flights data can be specified.
 
+## BUGS
+
+asif-gen currently assumes the time offset between Pacific time and UTC is 7 hours, which is only correct during daylight savings time.
+
 ## Usage
 
 bin/asif-gen --help
@@ -97,6 +101,16 @@ If you want to run via Leiningen:
 ```
 lein run --  --filter arrivals --study data/examples/tracknode-study.yaml --flights data/flights/flights-20180401.json --output arrivals.xml
 ```
+
+Windows users must run ```asif-gen``` via Leiningen, and will need to install Java and [Leiningen](https://leiningen.org) as follows:
+
+1. Install Java
+2. Install the [lein.bat](https://raw.githubusercontent.com/technomancy/leiningen/stable/bin/lein.bat) file onto your path
+3. Run ```lein self-install```
+4. Run ```lein version``` to confirm your Leiningen and Java versions
+5. From the base of the asif-gen repo (directory) that you have downloaded to your machine, confirm you can run ```lein run -- --help``` which should print out the usage instructions
+6. asif-gen should then be runable via Leiningen
+
 
 ## Development
 
