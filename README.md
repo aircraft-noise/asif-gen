@@ -9,9 +9,11 @@ Two input files are required:
 
 Optionally, one or more filters over the aircraft flights data can be specified.
 
-## BUGS
+## BUGS and Limitations
 
 asif-gen currently assumes the time offset between Pacific time and UTC is 7 hours, which is only correct during daylight savings time.
+
+Flights originating or departing from the heliports SUMED and VMCED are removed from the generated output file.
 
 ## Usage
 
