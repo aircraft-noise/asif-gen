@@ -99,7 +99,8 @@
    [:aircraftType
     [:anpAircraftId aircraft-id]]
    [:numOperations number]
-   [:arrivalAirport {:type "ICAO"} airport]
+   ;; [:arrivalAirport {:type "ICAO"} airport]
+   [:arrivalAirport airport]
    [:arrivalRunway (if runway
                      runway
                      (->> airport
@@ -116,9 +117,10 @@
    [:aircraftType
     [:anpAircraftId aircraft-id]]
    [:numOperations number]
-   [:saeProfile "STANDARD"]
-   [:stageLength 1]
-   [:departureAirport {:type "ICAO"} airport]
+   ;; [:saeProfile "STANDARD"]
+   ;; [:stageLength 1]
+   ;; [:departureAirport {:type "ICAO"} airport]
+   [:departureAirport airport]
    [:departureRunway (if runway
                        runway
                        (->> airport
@@ -126,7 +128,10 @@
                             :runways
                             :departure
                             first))]
-   [:offTime op-time]])
+   [:offTime op-time]
+   [:saeProfile "STANDARD"]
+   [:stageLength 1]
+   ])
 
 (defn operations-gen
   [operations]
@@ -183,7 +188,8 @@
   (into [:track
          [:name name]
          [:optype op-type]
-         [:airport {:type "ICAO"} airport]
+         ;; [:airport {:type "ICAO"} airport]
+         [:airport airport] ;; Removed {:type "ICAO"} due to errors Kadin found with AEDT, 2019-06
          [:runway runway]]
         (mapv subtrack subtracks)))
 
