@@ -20,6 +20,13 @@
   [t]
   (time.coerce/from-long (* 1000 (- (long t) (* 7 60 60)))))
 
+(defn epoch-seconds->time
+  [t]
+  (-> t
+      (* 1000)
+      long
+      time.coerce/from-long))
+
 (defn asif-time
   [t]
   (time.format/unparse (time.format/formatter :date-hour-minute-second) t))
@@ -59,6 +66,8 @@
      :flight flight
      :ts-start (pdt-epoch->asif-time segment_start)
      :ts-end (pdt-epoch->asif-time segment_end)
+     :utc-start (epoch-seconds->time segment_start)
+     :utc-end (epoch-seconds->time segment_end)
      :positions (mapv format-position positions)
      }))
 
@@ -87,6 +96,33 @@
         (map format-aircraft)
         (remove unsupported-airport?)
         (filterv predicate))))
+
+(defn get-earliest-utc-start
+  [ms]
+  (->> ms
+       (map :utc-start)
+       time/earliest))
+
+(defn get-latest-utc-end
+  [ms]
+  (->> ms
+       (map :utc-end)
+       time/latest))
+
+(defn file-flight-times
+  [filename]
+  (let [flights (->> filename
+                     file->aircraft
+                     (mapv format-aircraft))
+        min-start (get-earliest-utc-start flights)
+        max-end (get-latest-utc-end flights)]
+    (println "File:" filename)
+    (println)
+    (println "Start of day, UTC " (asif-time (time.local/to-local-date-time (time/date-time 2019 06 19))))
+    (println "Earliest in file: " (asif-time min-start))
+    (println)
+    (println "End of day, UTC:  " (asif-time (time.local/to-local-date-time (time/date-time 2019 06 19 23 59 59))))
+    (println "Latest in file:   " (asif-time max-end))))
 
 ;; (def acf (->aircraft "./data/aedt/FA_Noise_Examples.180401.json"))
 
