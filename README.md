@@ -24,10 +24,11 @@ Generates AEDT ASIF XML from the provided study template and flights data.
 Usage: asif-gen [options]
 
 Options:
-      --study file        Study filename, supported formats/extensions: .yaml, .json, and .edn
-      --flights file      Flights filename (TCR-JSON)
-      --filter name   []  Name of filter to invoke on flights, this option can provided multiple times...
-      --output file       Filename for generated ASIF
+      --study file                   Study filename, supported formats/extensions: yaml, json, and edn
+      --flights file                 Flights filename (TCR-JSON)
+      --filter name             []   Name of filter to invoke on flights, this option can provided multiple times...
+      --flight-id icao.segment  nil  Extract only the flight with the given ICAO/segment, overrides any filters
+      --output file                  Filename for generated ASIF, if not given, and flight-id is, output file is icao-segment.xml
   -h, --help
 ```
 
@@ -52,6 +53,7 @@ Currently these magic values include:
 * !generate-tos-track-nodes! - Generates track nodes for each position of each flight in the flights data file
 * !get-airports! - Generates a list of all airports referenced in the flights data file
 * !get-earliest-start! - Is replaced by the earliest start time found in the flights data file
+* !study-name! - Replaced by a string composed of the flights filename, the output filename, and the study filename
 
 These are the initial functions that were needed for our initial AEDT testing, almost certainly many more such functions will be implemented as required.
 
@@ -129,6 +131,5 @@ lein bin
 
 ## License
 
-Copyright © 2018 DCJ
+Copyright © 2019 Clark Communications Corporation
 All rights reserved
-Will select some open-source license in the future...

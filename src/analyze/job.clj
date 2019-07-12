@@ -21,8 +21,17 @@
 
 ;; https://github.com/clojure/tools.cli
 
+(def ^:dynamic *flights-file* "")
+(def ^:dynamic *output-file* "")
+(def ^:dynamic *study-file* "")
+
+(defn get-study-name
+  [ms]
+  (str *flights-file* " " *output-file* " " *study-file*))
+
 (def dkw->dsfn
-  {:!get-airports! #'tcr/get-airports
+  {:!study-name! #'get-study-name
+   :!get-airports! #'tcr/get-airports
    :!generate-tos-track-nodes! #'asif/generate-tos-track-nodes
    :!get-earliest-start! #'tcr/get-earliest-start})
 
@@ -126,11 +135,14 @@
   ([study-file flights-file out-file]
    (process-study asif/arrival-or-departure study-file flights-file out-file))
   ([filter-fn study-file flights-file out-file]
-   (->> study-file
-        read-structured-file
-        (->study (read-flights-file filter-fn flights-file))
-        ->xml
-        (spit out-file))))
+   (binding [*flights-file* (fs/base-name flights-file)
+             *study-file* (fs/base-name study-file)
+             *output-file* (fs/base-name out-file)]
+     (->> study-file
+          read-structured-file
+          (->study (read-flights-file filter-fn flights-file))
+          ->xml
+          (spit out-file)))))
 
 (defn process-study-special
   [study-file flights-data out-file]
@@ -160,7 +172,10 @@
     :default []
     :parse-fn #(keyword %)
     :assoc-fn (fn [m k v] (update-in m [k] conj v))]
-   [nil "--output file" "Filename for generated ASIF"]
+   [nil "--flight-id icao.segment" "Extract only the flight with the given ICAO/segment, overrides any filters"
+    :default nil
+    :parse-fn #(zipmap [:icao :segment] (string/split % #"\."))]
+   [nil "--output file" "Filename for generated ASIF, if not given, and flight-id is, output file is icao-segment.xml"]
    ["-h" "--help"]])
 
 (defn usage
@@ -177,18 +192,29 @@
        (string/join \newline)
        println))
 
+(defn flight-id-filter-fn
+  [flight-id]
+  (fn
+    [{:keys [icao segment] :as flight}]
+    (and (= icao (:icao flight-id))
+         (= segment (Integer/parseInt (:segment flight-id))))))
+
 (defn -main
   [& args]
   (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)
-        {:keys [study flights filter output help]} options]
+        {:keys [study flight-id flights filter output help]} options
+        {:keys [icao segment]} flight-id
+        output-file (or output (str icao "-" segment ".xml"))]
     (cond
       help (do
              (usage summary)
              (System/exit 0))
       options (do
                 (let [filter-names (if (empty? filter) [:both] filter)
-                      filter-fns (apply comp (reverse (map filter->fn filter-names)))]
-                  (process-study filter-fns study flights output))))))
+                      filter-fns (if flight-id
+                                   (flight-id-filter-fn flight-id)
+                                   (apply comp (reverse (map filter->fn filter-names))))]
+                  (process-study filter-fns study flights output-file))))))
 
 (defn edn-test-data
   []
@@ -203,3 +229,6 @@
       (str ".json")
       read-flights-file
       (analyze.edn/->file (str filename ".edn"))))
+
+;; 06a1e9.0
+;; 0c20ac.0

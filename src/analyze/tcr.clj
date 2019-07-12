@@ -59,6 +59,7 @@
   (let [{:keys [tail_# ac_type icao #_segments]} metadata
         {:keys [#_sightings gps_min segment_start segment gap origin segment_end flight destination gps_max]} header]
     {:icao icao
+     :segment segment
      :tail tail_#
      :origin origin
      :ac-type ac_type
